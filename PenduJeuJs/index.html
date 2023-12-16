@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        #hangman-word {
+            font-size: 24px;
+            margin: 20px 0;
+            letter-spacing: 8px;
+        }
+
+        #message {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        #hangman-image {
+            margin: 20px 0;
+            max-width: 100%;
+            height: auto;
+        }
+
+        #input-letter {
+            font-size: 16px;
+            margin-top: 10px;
+            padding: 8px;
+            text-transform: uppercase;
+        }
+
+        button {
+            font-size: 18px;
+            padding: 10px 20px;
+            background-color: #4caf50;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .correct-letter {
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .incorrect-letter {
+            color: #e53935;
+            font-weight: bold;
+        }
+
+        #hangman-diagram {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .hangman-part {
+            width: 20px;
+            height: 150px;
+            background-color: #333;
+            margin: 0 5px;
+        }
+    </style>
+    <title>Jeu de Pendu</title>
+</head>
+<body>
+    <h1>Jeu de Pendu</h1>
+    <div id="hangman-word"></div>
+    <div id="message"></div>
+    <img id="hangman-image" src="OIP.jpg" alt="Pendu">
+    <div id="hangman-diagram"></div>
+    <input type="text" id="input-letter" maxlength="1" placeholder="Devinez une lettre">
+    <button onclick="devinerLettre()">Devinez!</button>
+
+    <script>
+        async function obtenirMotAleatoire() {
+            try {
+                const response = await fetch('https://random-word-api.herokuapp.com/word?number=1');
+                const data = await response.json();
+                return data[0];
+            } catch (error) {
+                console.error('Erreur lors de la récupération du mot aléatoire:', error);
+            }
+        }
+
+        async function initialiserJeu() {
+            motSecret = await choisirMotAleatoire();
+            lettresDevinees = [];
+            erreurs = 0;
+            document.getElementById("hangman-diagram").innerHTML = "";
+            document.getElementById("hangman-image").src = `OIP.jpg`;
+            afficherMot();
+        }
+
+        async function choisirMotAleatoire() {
+            return await obtenirMotAleatoire();
+        }
+
+        function afficherMot() {
+            let motAffiche = "";
+            for (let lettre of motSecret) {
+                if (lettresDevinees.includes(lettre)) {
+                    motAffiche += `<span class="correct-letter">${lettre}</span>`;
+                } else {
+                    motAffiche += "_";
+                }
+            }
+            document.getElementById("hangman-word").innerHTML = motAffiche;
+        }
+
+        function devinerLettre() {
+            let inputLettre = document.getElementById("input-letter").value.toLowerCase();
+
+            if (inputLettre.length === 1 && inputLettre.match(/[a-z]/)) {
+                if (lettresDevinees.includes(inputLettre)) {
+                    setMessage("Vous avez déjà deviné cette lettre. Réessayez.");
+                } else if (motSecret.includes(inputLettre)) {
+                    setMessage("Bonne devinette! La lettre est dans le mot.");
+                    lettresDevinees.push(inputLettre);
+                } else {
+                    setMessage("Mauvaise devinette. La lettre n'est pas dans le mot.");
+                    ajouterPartiePendu();
+                }
+                afficherMot();
+            } else {
+                setMessage("Veuillez entrer une lettre valide.");
+            }
+
+            if (erreurs === maxErreurs) {
+                setMessage("Désolé, vous avez atteint le nombre maximum d'erreurs. Le mot secret était: " + motSecret);
+            }
+
+            if (lettresDevinees.length === new Set(motSecret.split('')).size) {
+                setMessage("Félicitations! Vous avez deviné le mot: " + motSecret);
+            }
+        }
+
+        function ajouterPartiePendu() {
+            erreurs++;
+            document.getElementById("hangman-diagram").innerHTML += '<div class="hangman-part"></div>';
+            document.getElementById("hangman-image").src = `hangman${erreurs}.png`;
+        }
+
+        function speakMessage(message) {
+            const speech = new SpeechSynthesisUtterance();
+            speech.text = message;
+            speech.volume = 1;
+            speech.rate = 2;
+            speech.pitch = 1;
+
+            window.speechSynthesis.speak(speech);
+        }
+
+        function setMessage(message) {
+            document.getElementById("message").textContent = message;
+            speakMessage(message);
+        }
+
+        // Au chargement de la page, initialiser le jeu avec un mot aléatoire
+        window.onload = initialiserJeu;
+    </script>
+</body>
+</html>
